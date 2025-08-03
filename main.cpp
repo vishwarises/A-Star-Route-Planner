@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 
@@ -18,6 +19,9 @@ vector<vector<State>> ReadBoardFile(std::string path);
 vector<State> ParseLine(std::string points);
 std::string CellString(State state);
 vector<vector<State>> Search(vector<vector<State>> board, vector<int> start, vector<int> goal);
+int Heuristic(int x1, int y1, int x2, int y2);
+void AddToOpen(int x, int y, int g, int h, vector<vector<int>>& open, vector<vector<State>>& grid);
+bool Compare(std::vector<int> node1, std::vector<int> node2);
 // - - - - - - - - - - - - - - - - - - 
 
 
@@ -34,7 +38,7 @@ int main()
 	
 	return 0;
 }
-
+// - - - - - - - - - - - - - - -
 
 
 
@@ -109,6 +113,41 @@ std::string CellString(State cell)
 // Search function will get a board, start and goal coordinates as input. 
 vector<vector<State>> Search(vector<vector<State>> board, vector<int> start, vector<int> goal)
 {
+	//Has all nodes from starting and its x, y, g, h. 
+	std::vector<std::vector<int>> open;
+	
+	int x = start[0];
+	int y = start[1];
+	int goal_x = goal[0];
+	int goal_y = goal[1];
+	int g = 0;
+	int h = Heuristic(x, y, goal_x, goal_y);
+
+	AddToOpen(x, y, g, h, open, board);
+
 	std::cout << "No path found!\n";
 	return {};
+}
+
+// Finds the heuristic distance 
+int Heuristic(int x1, int y1, int x2, int y2)
+{
+	return std::abs(x2 - x1) + std::abs(y2 - y1);
+}
+
+void AddToOpen(int x, int y, int g, int h, vector<vector<int>>& open, vector<vector<State>>& grid)
+{
+	//Creating a vector to add all nodes we come across
+	std::vector<int> node = { x, y, g, h };
+	open.push_back(node);
+
+	//Marking the grids as visited 
+	grid[x][y] = State::kObstacle;
+}
+
+bool Compare(std::vector<int> node1, std::vector<int> node2)
+{
+	int f1 = node1[2] + node1[3];
+	int f2 = node2[2] + node2[3];
+	return f1 > f2;
 }
