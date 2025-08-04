@@ -13,10 +13,14 @@ enum class State
 	kEmpty,
 	kObstacle,
 	kClosed,
-	kPath
+	kPath,
+	kStart,
+	kFinish
 };
 
-// * - - - - - - - - - - - - - Function Prototypes - - - - - - - - - - - - - - - - *
+const int delta[4][2]{ {-1, 0}, {0, -1}, {1, 0}, {0, 1} };
+
+// * - - - Function Prototypes - - - *
 void PrintBoard(const std::vector<std::vector<State>> &board);
 vector<vector<State>> ReadBoardFile(std::string path);
 vector<State> ParseLine(std::string points);
@@ -24,18 +28,20 @@ std::string CellString(State state);
 vector<vector<State>> Search(vector<vector<State>> board, vector<int> start, vector<int> goal);
 int Heuristic(int x1, int y1, int x2, int y2);
 void AddToOpen(int x, int y, int g, int h, vector<vector<int>>& open, vector<vector<State>>& grid);
+void ExpandNeighbors(const vector<int>& current, vector<int> goal, vector<vector<int>>& open, vector<vector<State>>& grid);
 bool Compare(std::vector<int> node1, std::vector<int> node2);
 void CellSort(vector<vector<int>>* v);
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
+bool CheckValidCell(int x, int y, vector<vector<State>>& grid);
+// - - - - - - - - - - - - - - - - - - 
 
 
 
-//  M A I N 
+// * - * - * M A I N * - * - *
 int main()
 {
 	vector<vector<State>> board = ReadBoardFile("board1.txt");
-	vector<int> start;
-	vector<int> goal;
+	vector<int> start = {0, 0};
+	vector<int> goal = {4, 5};
 	vector<vector<State>> solution = Search(board, start, goal);
 	PrintBoard(solution);
 	
@@ -72,7 +78,7 @@ void PrintBoard(const std::vector<std::vector<State>> &board)
 		{
 			std::cout << CellString(j);
 		}
-		std::cout << std::endl;
+		std::cout << "\n";
 	}
 }
 
@@ -105,14 +111,11 @@ std::string CellString(State cell)
 {
 	switch (cell)
 	{
-	case State::kObstacle:
-		return "X ";
-
-	case State::kPath:
-		return "- ";
-
-	default:
-		return "0 ";
+		case State::kObstacle: return "X ";
+		case State::kPath: return "- ";
+		case State::kStart: return "V ";
+		case State::kFinish: return "$ ";
+		default: return "0 ";
 	}
 }
 
@@ -147,18 +150,58 @@ vector<vector<State>> Search(vector<vector<State>> board, vector<int> start, vec
 		x = cur_node[0];
 		y = cur_node[1];
 		board[x][y] = State::kPath;
-		// Check if you've reached the goal. If so, return grid.
-		if (x == goal[0] && y == goal[1]) return board;
 
-		// If we're not done, expand search to current node's neighbors. This step will be completed in a later quiz.
-		// ExpandNeighbors
+		// Check if you've reached the goal. If so, return grid.
+		if (x == goal[0] && y == goal[1])
+		{
+			// Set the start grid cell to kStart, and 
+			// set the goal grid cell to kFinish before returning the grid. 
+			board[start[0]][start[1]] = State::kStart;
+			board[goal[0]][goal[1]] = State::kFinish;
+			return board;
+		}
+		// If we're not done, expand search to current node's neighbors.
+		ExpandNeighbors(cur_node, goal, open, board);
 	}
 
 	std::cout << "No path found!\n";
 	return {};
 }
 
+/**
+ * Check that a cell is valid: on the grid, not an obstacle, and clear.
+ */
+bool CheckValidCell(int x, int y, vector<vector<State>>& grid) {
+	bool on_grid_x = (x >= 0 && x < grid.size());
+	bool on_grid_y = (y >= 0 && y < grid[0].size());
+	if (on_grid_x && on_grid_y)
+		return grid[x][y] == State::kEmpty;
+	return false;
+}
 
+void ExpandNeighbors(const vector<int>& current, vector<int> goal, vector<vector<int>>& open, vector<vector<State>>& grid)
+{
+	// Get current node's data.
+	int x = current[0];
+	int y = current[1];
+	int g = current[2];
+
+	// Loop through current node's potential neighbors.
+	for (int i = 0; i < 4; i++) {
+		int x2 = x + delta[i][0];
+		int y2 = y + delta[i][1];
+
+		// Check that the potential neighbor's x2 and y2 values are on the grid and not closed.
+		if (CheckValidCell(x2, y2, grid)) {
+			// Increment g value and add neighbor to open list.
+			int g2 = g + 1;
+			int h2 = Heuristic(x2, y2, goal[0], goal[1]);
+			AddToOpen(x2, y2, g2, h2, open, grid);
+		}
+	}
+}
+
+// Sort all nodes in decending order based on f = g + h;
 void CellSort(vector<vector<int>>* v)
 {
 	sort(v->begin(), v->end(), Compare);
